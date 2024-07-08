@@ -497,6 +497,9 @@ func (b *VideoBin) addSelector() error {
 	if err != nil {
 		return errors.ErrGstPipelineError(err)
 	}
+	if err = inputSelector.SetProperty("drop-backwards", true); err != nil {
+		return err
+	}
 
 	videoRate, err := gst.NewElement("videorate")
 	if err != nil {
