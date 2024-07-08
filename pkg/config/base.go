@@ -111,16 +111,16 @@ func (c *BaseConfig) initLogger(values ...interface{}) error {
 		c.Logging.Level = c.LogLevel
 	}
 
-	var gstDebug string
-	switch c.Logging.Level {
-	case "debug":
-		gstDebug = "3"
-	case "info", "warn":
-		gstDebug = "2"
-	case "error":
-		gstDebug = "1"
-	}
-	if err := os.Setenv("GST_DEBUG", gstDebug); err != nil {
+	// var gstDebug string
+	// switch c.Logging.Level {
+	// case "debug":
+	// 	gstDebug = "3"
+	// case "info", "warn":
+	// 	gstDebug = "2"
+	// case "error":
+	// 	gstDebug = "1"
+	// }
+	if err := os.Setenv("GST_DEBUG", "GST_CAPS:4"); err != nil {
 		return err
 	}
 
