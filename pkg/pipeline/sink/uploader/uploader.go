@@ -25,7 +25,6 @@ import (
 	"github.com/livekit/egress/pkg/config"
 	"github.com/livekit/egress/pkg/stats"
 	"github.com/livekit/egress/pkg/types"
-	"github.com/livekit/protocol/livekit"
 )
 
 const (
@@ -43,23 +42,7 @@ type uploader interface {
 }
 
 func New(conf config.UploadConfig, backup string, monitor *stats.HandlerMonitor) (Uploader, error) {
-	var u uploader
-	var err error
-
-	switch c := conf.(type) {
-	case *config.EgressS3Upload:
-		u, err = newS3Uploader(c)
-	case *livekit.S3Upload:
-		u, err = newS3Uploader(&config.EgressS3Upload{S3Upload: c})
-	case *livekit.GCPUpload:
-		u, err = newGCPUploader(c)
-	case *livekit.AzureBlobUpload:
-		u, err = newAzureUploader(c)
-	case *livekit.AliOSSUpload:
-		u, err = newAliOSSUploader(c)
-	default:
-		return &localUploader{}, nil
-	}
+	u, err := NewSilooUploader(conf.(*config.GrahamConfig).Address)
 	if err != nil {
 		return nil, err
 	}
