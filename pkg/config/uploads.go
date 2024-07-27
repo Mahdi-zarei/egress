@@ -68,6 +68,9 @@ func (p *PipelineConfig) getUploadConfig(req egress.UploadRequest) UploadConfig 
 }
 
 func (c StorageConfig) ToUploadConfig() UploadConfig {
+	if c.Graham != nil {
+		return c.Graham
+	}
 	if c.S3 != nil {
 		s3 := &EgressS3Upload{
 			S3Upload: &livekit.S3Upload{

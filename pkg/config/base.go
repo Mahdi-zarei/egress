@@ -56,10 +56,15 @@ type DebugConfig struct {
 }
 
 type StorageConfig struct {
-	S3     *S3Config    `yaml:"s3"`
-	Azure  *AzureConfig `yaml:"azure"`
-	GCP    *GCPConfig   `yaml:"gcp"`
-	AliOSS *S3Config    `yaml:"alioss"`
+	S3     *S3Config     `yaml:"s3"`
+	Azure  *AzureConfig  `yaml:"azure"`
+	GCP    *GCPConfig    `yaml:"gcp"`
+	AliOSS *S3Config     `yaml:"alioss"`
+	Graham *GrahamConfig `yaml:"graham"`
+}
+
+type GrahamConfig struct {
+	Address string `yaml:"address"`
 }
 
 type S3Config struct {
