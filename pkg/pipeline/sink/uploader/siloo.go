@@ -63,7 +63,7 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 	respObj := new(getFileCredsResp)
 	err = json.Unmarshal(respBytes, respObj)
 	if err != nil {
-		return "", 0, errors.New("Failed to unmarshal response: " + err.Error())
+		return "", 0, errors.New("Failed to unmarshal response: " + err.Error() + ". response is: " + string(respBytes))
 	}
 
 	file, err := os.Open(localFilepath)
