@@ -10,13 +10,13 @@ import (
 	"os"
 )
 
-type getFileCredsReq struct {
+type GetFileCredsReq struct {
 	FileSize int64  `json:"file_size"`
 	FilePath string `json:"file_path"`
 	FileType string `json:"file_type"`
 }
 
-type getFileCredsResp struct {
+type GetFileCredsResp struct {
 	UploadURL      string `json:"upload_url"`
 	ReturnLocation string `json:"return_location"`
 }
@@ -39,7 +39,7 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		return "", 0, errors.New("Failed to get file stats: " + err.Error())
 	}
 
-	req := &getFileCredsReq{
+	req := &GetFileCredsReq{
 		FileSize: fileStats.Size(),
 		FilePath: storageFilepath,
 		FileType: string(outputType),
@@ -60,7 +60,7 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		return "", 0, errors.New("Failed to read resp body: " + err.Error())
 	}
 
-	respObj := new(getFileCredsResp)
+	respObj := new(GetFileCredsResp)
 	err = json.Unmarshal(respBytes, respObj)
 	if err != nil {
 		return "", 0, errors.New("Failed to unmarshal response: " + err.Error() + ". response is: " + string(respBytes))
