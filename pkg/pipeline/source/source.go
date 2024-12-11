@@ -27,6 +27,7 @@ type Source interface {
 	StartRecording() chan struct{}
 	EndRecording() chan struct{}
 	SetStartedAt()
+	JoinRoom() error
 	GetStartedAt() int64
 	GetEndedAt() int64
 	Close()

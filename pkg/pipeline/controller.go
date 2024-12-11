@@ -204,6 +204,13 @@ func (c *Controller) Run(ctx context.Context) *info.EgressInfo {
 	c.Info.StartedAt = time.Now().UnixNano()
 	defer c.Close()
 
+	err := c.src.JoinRoom()
+	if err != nil {
+		logger.Errorw("Failed to join room", err)
+		c.Info.SetFailed(err)
+		return c.Info
+	}
+
 	// session limit timer
 	c.startSessionLimitTimer(ctx)
 
