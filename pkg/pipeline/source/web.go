@@ -52,6 +52,9 @@ type WebSource struct {
 	startRecording chan struct{}
 	endRecording   chan struct{}
 
+	chromeCtx context.Context
+	webURL    string
+
 	info *livekit.EgressInfo
 }
 
@@ -277,6 +280,8 @@ func (s *WebSource) launchChrome(ctx context.Context, p *config.PipelineConfig, 
 		chromeCancel()
 		allocCancel()
 	}
+	s.chromeCtx = chromeCtx
+	s.webURL = webUrl
 
 	chromedp.ListenTarget(chromeCtx, func(ev interface{}) {
 		switch ev := ev.(type) {
@@ -317,9 +322,21 @@ func (s *WebSource) launchChrome(ctx context.Context, p *config.PipelineConfig, 
 		}
 	})
 
+	err := chromedp.Run(chromeCtx)
+	if err != nil {
+		if strings.HasPrefix(err.Error(), chromeFailedToStart) {
+			return errors.ErrChromeFailedToStart(err)
+		}
+		return errors.ErrPageLoadFailed(err.Error())
+	}
+
+	return nil
+}
+
+func (s *WebSource) JoinRoom() error {
 	var errString string
-	err := chromedp.Run(chromeCtx,
-		chromedp.Navigate(webUrl),
+	err := chromedp.Run(s.chromeCtx,
+		chromedp.Navigate(s.webURL),
 		chromedp.Evaluate(`
 			if (document.querySelector('div.error')) {
 				document.querySelector('div.error').innerText;
