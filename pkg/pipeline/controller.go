@@ -234,6 +234,11 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 		}
 	}
 
+	if c.SessionLimits.StartDelay > 0 {
+		logger.Debugw("Sleeping for ", c.SessionLimits.StartDelay.String())
+		time.Sleep(c.SessionLimits.StartDelay)
+	}
+
 	if err := c.p.Run(); err != nil {
 		c.src.Close()
 		c.Info.SetFailed(err)
@@ -494,7 +499,8 @@ func (c *Controller) startSessionLimitTimer(ctx context.Context) {
 				c.Info.SetAborted(livekit.MsgLimitReachedWithoutStart)
 
 			case livekit.EgressStatus_EGRESS_ACTIVE:
-				c.Info.SetLimitReached()
+				//c.Info.SetLimitReached()
+				// just finish it, do not set errors for it
 			}
 			if c.playing.IsBroken() {
 				c.SendEOS(ctx, livekit.EndReasonLimitReached)

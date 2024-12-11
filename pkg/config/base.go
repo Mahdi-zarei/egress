@@ -71,6 +71,7 @@ type SessionLimits struct {
 	StreamOutputMaxDuration  time.Duration `yaml:"stream_output_max_duration"`
 	SegmentOutputMaxDuration time.Duration `yaml:"segment_output_max_duration"`
 	ImageOutputMaxDuration   time.Duration `yaml:"image_output_max_duration"`
+	StartDelay               time.Duration `yaml:"start_delay"`
 }
 
 func (c *BaseConfig) initLogger(values ...interface{}) error {
