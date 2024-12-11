@@ -48,6 +48,7 @@ type WebSource struct {
 	xvfb        *exec.Cmd
 	closeChrome context.CancelFunc
 
+	startedAt      time.Time
 	startRecording chan struct{}
 	endRecording   chan struct{}
 
@@ -112,8 +113,12 @@ func (s *WebSource) EndRecording() chan struct{} {
 	return s.endRecording
 }
 
+func (s *WebSource) SetStartedAt() {
+	s.startedAt = time.Now()
+}
+
 func (s *WebSource) GetStartedAt() int64 {
-	return time.Now().UnixNano()
+	return s.startedAt.UnixNano()
 }
 
 func (s *WebSource) GetEndedAt() int64 {

@@ -196,6 +196,11 @@ func (c *Controller) Run(ctx context.Context) *info.EgressInfo {
 	ctx, span := tracer.Start(ctx, "Pipeline.Run")
 	defer span.End()
 
+	if c.SessionLimits.StartDelay > 0 {
+		logger.Debugw("Sleeping for " + c.SessionLimits.StartDelay.String())
+		time.Sleep(c.SessionLimits.StartDelay)
+	}
+
 	c.Info.StartedAt = time.Now().UnixNano()
 	defer c.Close()
 
@@ -217,7 +222,7 @@ func (c *Controller) Run(ctx context.Context) *info.EgressInfo {
 			c.Info.SetAborted(info.MsgStartNotReceived)
 			return c.Info
 		case <-start:
-			// continue
+			c.src.SetStartedAt()
 		}
 	}
 
@@ -228,11 +233,6 @@ func (c *Controller) Run(ctx context.Context) *info.EgressInfo {
 				return c.Info
 			}
 		}
-	}
-
-	if c.SessionLimits.StartDelay > 0 {
-		logger.Debugw("Sleeping for ", c.SessionLimits.StartDelay.String())
-		time.Sleep(c.SessionLimits.StartDelay)
 	}
 
 	if err := c.p.Run(); err != nil {
