@@ -113,6 +113,10 @@ func (s *SDKSource) Playing(trackID string) {
 	}
 }
 
+func (s *SDKSource) SetStartedAt() {
+	return
+}
+
 func (s *SDKSource) GetStartedAt() int64 {
 	return s.sync.GetStartedAt()
 }

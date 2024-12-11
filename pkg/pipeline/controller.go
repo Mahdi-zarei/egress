@@ -199,6 +199,11 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 	ctx, span := tracer.Start(ctx, "Pipeline.Run")
 	defer span.End()
 
+	if c.SessionLimits.StartDelay > 0 {
+		logger.Debugw("Sleeping for " + c.SessionLimits.StartDelay.String())
+		time.Sleep(c.SessionLimits.StartDelay)
+	}
+
 	defer c.Close()
 
 	// session limit timer
@@ -220,7 +225,7 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 			c.Info.SetAborted(livekit.MsgStartNotReceived)
 			return c.Info
 		case <-start:
-			// continue
+			c.src.SetStartedAt()
 		}
 	}
 
@@ -232,11 +237,6 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 				return c.Info
 			}
 		}
-	}
-
-	if c.SessionLimits.StartDelay > 0 {
-		logger.Debugw("Sleeping for ", c.SessionLimits.StartDelay.String())
-		time.Sleep(c.SessionLimits.StartDelay)
 	}
 
 	if err := c.p.Run(); err != nil {
