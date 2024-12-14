@@ -250,6 +250,8 @@ func (c *Controller) handleMessageStateChanged(msg *gst.Message) {
 	if s == pipelineName {
 		c.playing.Once(func() {
 			logger.Infow("pipeline playing")
+			c.src.SetStartedAt()
+			c.startSessionLimitTimer(c.runCtx)
 			c.updateStartTime(c.src.GetStartedAt())
 		})
 	} else if strings.HasPrefix(s, "app_") {
