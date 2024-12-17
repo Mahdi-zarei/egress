@@ -117,7 +117,7 @@ func (s *WebSource) EndRecording() chan struct{} {
 }
 
 func (s *WebSource) SetStartedAt() {
-	s.startedAt = time.Now()
+	s.startedAt = time.Now().Add(-time.Second)
 }
 
 func (s *WebSource) GetStartedAt() int64 {

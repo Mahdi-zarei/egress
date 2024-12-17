@@ -499,7 +499,7 @@ func (c *Controller) startSessionLimitTimer(ctx context.Context) {
 	}
 
 	if timeout > 0 {
-		c.limitTimer = time.AfterFunc(timeout, func() {
+		c.limitTimer = time.AfterFunc(timeout-time.Second, func() {
 			switch c.Info.Status {
 			case livekit.EgressStatus_EGRESS_STARTING:
 				c.Info.SetAborted(livekit.MsgLimitReachedWithoutStart)
