@@ -6,8 +6,10 @@ import (
 	"github.com/livekit/egress/pkg/errors"
 	"github.com/livekit/egress/pkg/types"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"time"
 )
 
 type GetFileCredsReq struct {
@@ -49,7 +51,18 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		return "", 0, errors.New("Failed to marshal req: " + err.Error())
 	}
 
-	resp, err := http.Post(s.grahamAddress, "text/json", bytes.NewReader(reqBytes))
+	var resp *http.Response
+	reader := bytes.NewReader(reqBytes)
+
+	for range 60 {
+		resp, err = http.Post(s.grahamAddress, "text/json", reader)
+		if err == nil {
+			break
+		} else {
+			log.Println("Failed to get url, retrying?: " + err.Error())
+		}
+		time.Sleep(time.Minute)
+	}
 	if err != nil {
 		return "", 0, errors.New("Failed to send req to Graham: " + err.Error())
 	}
@@ -76,7 +89,17 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 	if err != nil {
 		return "", 0, errors.New("Failed to create upload req: " + err.Error())
 	}
-	fileResp, err := http.DefaultClient.Do(fileReq)
+
+	var fileResp *http.Response
+	for range 60 {
+		fileResp, err = http.DefaultClient.Do(fileReq)
+		if err == nil && fileResp.StatusCode == http.StatusOK {
+			break
+		} else {
+			log.Println("Failed to upload, retrying?: " + err.Error())
+		}
+		time.Sleep(time.Minute)
+	}
 	if err != nil {
 		return "", 0, errors.New("Failed to do file upload req: " + err.Error())
 	}
