@@ -96,7 +96,13 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		if err == nil && fileResp.StatusCode == http.StatusOK {
 			break
 		} else {
-			log.Println("Failed to upload, retrying?: " + err.Error())
+			var errorText string
+			if err == nil {
+				errorText = "Non 200 status code " + fileResp.Status
+			} else {
+				errorText = err.Error()
+			}
+			log.Println("Failed to upload, retrying?: " + errorText)
 		}
 		time.Sleep(time.Minute)
 	}
