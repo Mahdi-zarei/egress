@@ -79,21 +79,27 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		return "", 0, errors.New("Failed to unmarshal response: " + err.Error() + ". response is: " + string(respBytes))
 	}
 
-	file, err := os.Open(localFilepath)
-	if err != nil {
-		return "", 0, errors.New("Failed ot open file: " + err.Error())
-	}
-	defer file.Close()
-
-	fileReq, err := http.NewRequest("PUT", respObj.UploadURL, file)
-	if err != nil {
-		return "", 0, errors.New("Failed to create upload req: " + err.Error())
-	}
-
 	var fileResp *http.Response
+	var file *os.File
+	var fileReq *http.Request
 	for range 60 {
+		if file != nil {
+			file.Close()
+		}
+		file, err = os.Open(localFilepath)
+		if err != nil {
+			return "", 0, errors.New("Failed ot open file: " + err.Error())
+		}
+
+		fileReq, err = http.NewRequest("PUT", respObj.UploadURL, file)
+		if err != nil {
+			file.Close()
+			return "", 0, errors.New("Failed to create upload req: " + err.Error())
+		}
+
 		fileResp, err = http.DefaultClient.Do(fileReq)
 		if err == nil && fileResp.StatusCode == http.StatusOK {
+			defer fileResp.Body.Close()
 			break
 		} else {
 			var errorText string
@@ -109,10 +115,12 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 	if err != nil {
 		return "", 0, errors.New("Failed to do file upload req: " + err.Error())
 	}
-	if resp.StatusCode != http.StatusOK {
+	if fileResp.StatusCode != http.StatusOK {
 		return "", 0, errors.New("File upload resp not OK: " + resp.Status)
 	}
-	_ = fileResp.Body.Close()
+	if file != nil {
+		file.Close()
+	}
 
 	return respObj.ReturnLocation, fileStats.Size(), nil
 }
