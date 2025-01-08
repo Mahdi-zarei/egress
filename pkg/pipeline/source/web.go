@@ -165,20 +165,29 @@ func (s *WebSource) createPulseSink(ctx context.Context, p *config.PipelineConfi
 	defer span.End()
 
 	logger.Debugw("creating pulse sink")
-	cmd := exec.Command("pactl",
-		"load-module", "module-null-sink",
-		fmt.Sprintf("sink_name=\"%s\"", p.Info.EgressId),
-		fmt.Sprintf("sink_properties=device.description=\"%s\"", p.Info.EgressId),
-	)
-	var b bytes.Buffer
-	cmd.Stdout = &b
-	cmd.Stderr = &infoLogger{cmd: "pactl"}
-	err := cmd.Run()
+	var err error
+	for range 5 {
+		cmd := exec.Command("pactl",
+			"load-module", "module-null-sink",
+			fmt.Sprintf("sink_name=\"%s\"", p.Info.EgressId),
+			fmt.Sprintf("sink_properties=device.description=\"%s\"", p.Info.EgressId),
+		)
+		var b bytes.Buffer
+		cmd.Stdout = &b
+		cmd.Stderr = &infoLogger{cmd: "pactl"}
+		err = cmd.Run()
+		if err != nil {
+			logger.Errorw("Failed to start pulse sing, maybe retry", err)
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+
+		s.pulseSink = strings.TrimRight(b.String(), "\n")
+		break
+	}
 	if err != nil {
 		return errors.ErrProcessFailed("pulse", err)
 	}
-
-	s.pulseSink = strings.TrimRight(b.String(), "\n")
 	return nil
 }
 
