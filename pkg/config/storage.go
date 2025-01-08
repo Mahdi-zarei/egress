@@ -25,10 +25,15 @@ type StorageConfig struct {
 	PathPrefix           string `yaml:"prefix"` // prefix applied to all filenames
 	GeneratePresignedUrl bool   `yaml:"generate_presigned_url"`
 
-	S3     *S3Config    `yaml:"s3"`     // upload to s3
-	Azure  *AzureConfig `yaml:"azure"`  // upload to azure
-	GCP    *GCPConfig   `yaml:"gcp"`    // upload to gcp
-	AliOSS *S3Config    `yaml:"alioss"` // upload to aliyun
+	S3     *S3Config     `yaml:"s3"`     // upload to s3
+	Azure  *AzureConfig  `yaml:"azure"`  // upload to azure
+	GCP    *GCPConfig    `yaml:"gcp"`    // upload to gcp
+	AliOSS *S3Config     `yaml:"alioss"` // upload to aliyun
+	Graham *GrahamConfig `yaml:"graham"`
+}
+
+type GrahamConfig struct {
+	Address string `yaml:"address"`
 }
 
 type S3Config struct {
@@ -63,6 +68,11 @@ type GCPConfig struct {
 }
 
 func (p *PipelineConfig) getStorageConfig(req egress.UploadRequest) (*StorageConfig, error) {
+	if p.BaseConfig.StorageConfig.Graham != nil {
+		return &StorageConfig{
+			Graham: p.BaseConfig.StorageConfig.Graham,
+		}, nil
+	}
 	sc := &StorageConfig{}
 	if p.StorageConfig != nil {
 		sc.PathPrefix = p.StorageConfig.PathPrefix

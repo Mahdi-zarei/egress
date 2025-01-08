@@ -69,20 +69,10 @@ func New(conf, backup *config.StorageConfig, monitor *stats.HandlerMonitor, info
 }
 
 func getUploader(conf *config.StorageConfig) (uploader, error) {
-	switch {
-	case conf == nil:
-		return newLocalUploader(&config.StorageConfig{})
-	case conf.S3 != nil:
-		return newS3Uploader(conf)
-	case conf.GCP != nil:
-		return newGCPUploader(conf)
-	case conf.Azure != nil:
-		return newAzureUploader(conf)
-	case conf.AliOSS != nil:
-		return newAliOSSUploader(conf)
-	default:
-		return newLocalUploader(conf)
+	if conf.Graham != nil {
+		return NewSilooUploader(conf.Graham.Address)
 	}
+	panic("no graham?")
 }
 
 func (u *Uploader) Upload(
