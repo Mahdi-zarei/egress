@@ -177,7 +177,7 @@ func (s *WebSource) createPulseSink(ctx context.Context, p *config.PipelineConfi
 		cmd.Stderr = &infoLogger{cmd: "pactl"}
 		err = cmd.Run()
 		if err != nil {
-			logger.Errorw("Failed to start pulse sing, maybe retry", err)
+			logger.Errorw("Failed to start pulse sing, maybe retry", err, "with output:", string(b.Bytes()))
 			time.Sleep(200 * time.Millisecond)
 			continue
 		}

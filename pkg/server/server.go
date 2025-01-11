@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/frostbyte73/core"
@@ -57,6 +58,9 @@ type Server struct {
 	activeRequests atomic.Int32
 	terminating    core.Fuse
 	shutdown       core.Fuse
+
+	mu        sync.Mutex
+	failTimes map[time.Time]struct{}
 }
 
 func NewServer(conf *config.ServiceConfig, bus psrpc.MessageBus, ioClient info.IOClient) (*Server, error) {
@@ -69,6 +73,7 @@ func NewServer(conf *config.ServiceConfig, bus psrpc.MessageBus, ioClient info.I
 		DebugService:     service.NewDebugService(pm),
 		ipcServiceServer: grpc.NewServer(),
 		ioClient:         ioClient,
+		failTimes:        make(map[time.Time]struct{}),
 	}
 
 	monitor, err := stats.NewMonitor(conf, s)
