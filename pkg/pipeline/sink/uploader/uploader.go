@@ -15,6 +15,7 @@
 package uploader
 
 import (
+	"log"
 	"os"
 	"time"
 
@@ -96,6 +97,7 @@ func (u *Uploader) Upload(
 			}
 			return location, size, nil
 		} else {
+			log.Println("Failed to upload totally: ", err.Error())
 			if u.monitor != nil {
 				u.monitor.IncUploadCountFailure(string(outputType), float64(elapsed.Milliseconds()))
 			}

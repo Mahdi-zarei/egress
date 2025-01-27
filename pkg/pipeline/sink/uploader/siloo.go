@@ -56,10 +56,15 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 
 	for range 60 {
 		resp, err = http.Post(s.grahamAddress, "text/json", reader)
-		if err == nil {
+		if err == nil && resp.StatusCode == 200 {
 			break
 		} else {
-			log.Println("Failed to get url, retrying?: " + err.Error())
+			if err != nil {
+				log.Println("Failed to get url, retrying?: " + err.Error())
+			} else {
+				log.Println("Failed to get url, retrying?: status code: " + resp.Status)
+				err = errors.New("Failed to get url: " + resp.Status)
+			}
 		}
 		time.Sleep(time.Minute)
 	}
