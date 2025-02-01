@@ -52,10 +52,8 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 	}
 
 	var resp *http.Response
-	reader := bytes.NewReader(reqBytes)
-
 	for range 60 {
-		resp, err = http.Post(s.grahamAddress, "text/json", reader)
+		resp, err = http.Post(s.grahamAddress, "text/json", bytes.NewReader(reqBytes))
 		if err == nil && resp.StatusCode == 200 {
 			break
 		} else {
