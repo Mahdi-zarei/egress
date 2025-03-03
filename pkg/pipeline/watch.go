@@ -17,6 +17,7 @@ package pipeline
 import (
 	"context"
 	"fmt"
+	"github.com/livekit/egress/pkg/types"
 	"regexp"
 	"strings"
 	"time"
