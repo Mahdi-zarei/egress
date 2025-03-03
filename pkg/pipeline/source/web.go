@@ -202,7 +202,6 @@ func (s *WebSource) launchXvfb(ctx context.Context, p *config.PipelineConfig) er
 	dims := fmt.Sprintf("%dx%dx%d", p.Width, p.Height, p.Depth)
 	logger.Debugw("creating X display", "display", p.Display, "dims", dims)
 	xvfb := exec.Command("Xvfb", p.Display, "-screen", "0", dims, "-ac", "-nolisten", "tcp", "-nolisten", "unix")
-	xvfb.Stderr = &infoLogger{cmd: "xvfb"}
 	if err := xvfb.Start(); err != nil {
 		return errors.ErrProcessFailed("xvfb", err)
 	}
