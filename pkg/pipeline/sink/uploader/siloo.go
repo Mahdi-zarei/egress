@@ -38,7 +38,11 @@ func NewSilooUploader(grahamAddress string) (*SilooUploader, error) {
 func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType types.OutputType) (string, int64, error) {
 	fileStats, err := os.Stat(localFilepath)
 	if err != nil {
-		return "", 0, errors.New("Failed to get file stats: " + err.Error())
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to get file stats: "+err.Error()))
+	}
+
+	if fileStats.Size() == 0 {
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("File is empty"))
 	}
 
 	req := &GetFileCredsReq{
@@ -48,7 +52,7 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 	}
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return "", 0, errors.New("Failed to marshal req: " + err.Error())
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to marshal GetFileCredsReq"+err.Error()))
 	}
 
 	var resp *http.Response
@@ -67,19 +71,19 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		time.Sleep(time.Minute)
 	}
 	if err != nil {
-		return "", 0, errors.New("Failed to send req to Graham: " + err.Error())
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to send req to Graham: "+err.Error()))
 	}
 	defer resp.Body.Close()
 
 	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", 0, errors.New("Failed to read resp body: " + err.Error())
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to read resp body: "+err.Error()))
 	}
 
 	respObj := new(GetFileCredsResp)
 	err = json.Unmarshal(respBytes, respObj)
 	if err != nil {
-		return "", 0, errors.New("Failed to unmarshal response: " + err.Error() + ". response is: " + string(respBytes))
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to unmarshal response: "+err.Error()+". response is: "+string(respBytes)))
 	}
 
 	var fileResp *http.Response
@@ -91,13 +95,13 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		}
 		file, err = os.Open(localFilepath)
 		if err != nil {
-			return "", 0, errors.New("Failed ot open file: " + err.Error())
+			return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to open file: "+err.Error()))
 		}
 
 		fileReq, err = http.NewRequest("PUT", respObj.UploadURL, file)
 		if err != nil {
 			file.Close()
-			return "", 0, errors.New("Failed to create upload req: " + err.Error())
+			return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to create request: "+err.Error()))
 		}
 
 		fileResp, err = http.DefaultClient.Do(fileReq)
@@ -116,10 +120,10 @@ func (s *SilooUploader) upload(localFilepath, storageFilepath string, outputType
 		time.Sleep(time.Minute)
 	}
 	if err != nil {
-		return "", 0, errors.New("Failed to do file upload req: " + err.Error())
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("Failed to upload to siloo: "+err.Error()))
 	}
 	if fileResp.StatusCode != http.StatusOK {
-		return "", 0, errors.New("File upload resp not OK: " + resp.Status)
+		return "", 0, errors.ErrUploadFailed(storageFilepath, errors.New("File upload resp not OK: "+resp.Status))
 	}
 	if file != nil {
 		file.Close()
