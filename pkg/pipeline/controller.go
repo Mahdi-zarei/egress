@@ -76,6 +76,7 @@ type Controller struct {
 	stopped              core.Fuse
 	storageLimitOnce     sync.Once
 	stats                controllerStats
+	runCtx               context.Context
 }
 
 type controllerStats struct {
@@ -192,7 +193,21 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 	ctx, span := tracer.Start(ctx, "Pipeline.Run")
 	defer span.End()
 
+	c.runCtx = ctx
+
+	if c.SessionLimits.StartDelay > 0 {
+		logger.Debugw("Sleeping for " + c.SessionLimits.StartDelay.String())
+		time.Sleep(c.SessionLimits.StartDelay)
+	}
+
 	defer c.Close()
+
+	err := c.src.JoinRoom()
+	if err != nil {
+		logger.Errorw("Failed to join room", err)
+		c.Info.SetFailed(err)
+		return c.Info
+	}
 
 	defer func() {
 		if c.SourceType == types.SourceTypeSDK {
@@ -240,7 +255,7 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 
 	c.startOutputSizeMonitor()
 
-	err := c.p.Run()
+	err = c.p.Run()
 	if err != nil {
 		c.src.Close()
 		c.Info.SetFailed(err)
@@ -547,12 +562,12 @@ func (c *Controller) startSessionLimitTimer(ctx context.Context) {
 	}
 
 	if timeout > 0 {
-		c.limitTimer = time.AfterFunc(timeout, func() {
+		c.limitTimer = time.AfterFunc(timeout-time.Second, func() {
 			switch c.Info.Status {
 			case livekit.EgressStatus_EGRESS_STARTING:
 				c.Info.SetAborted(livekit.MsgLimitReachedWithoutStart)
 			case livekit.EgressStatus_EGRESS_ACTIVE:
-				c.Info.SetLimitReached()
+				//c.Info.SetLimitReached() do nothing
 			}
 
 			if c.playing.IsBroken() {

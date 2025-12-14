@@ -46,7 +46,7 @@ const (
 	endRecordingLog   = "END_RECORDING"
 
 	chromeFailedToStart = "chrome failed to start:"
-	chromeTimeout       = time.Second * 30
+	chromeTimeout       = time.Second * 10
 	chromeRetries       = 3
 )
 
@@ -56,9 +56,14 @@ type WebSource struct {
 	closeChrome  context.CancelFunc
 	chromeLogger *lumberjack.Logger
 
+	startedAt      time.Time
 	startRecording core.Fuse
 	endRecording   core.Fuse
 	closed         core.Fuse
+
+	chromeCtx    context.Context
+	chromeCancel context.CancelFunc
+	webURL       string
 
 	info *livekit.EgressInfo
 }
@@ -109,8 +114,12 @@ func (s *WebSource) EndRecording() <-chan struct{} {
 	return s.endRecording.Watch()
 }
 
+func (s *WebSource) SetStartedAt() {
+	s.startedAt = time.Now().Add(-time.Second)
+}
+
 func (s *WebSource) GetStartedAt() int64 {
-	return time.Now().UnixNano()
+	return s.startedAt.UnixNano()
 }
 
 func (s *WebSource) GetEndedAt() int64 {
@@ -292,6 +301,9 @@ func (s *WebSource) launchChrome(ctx context.Context, p *config.PipelineConfig) 
 			chromeCancel()
 			allocCancel()
 		}
+		s.chromeCtx = chromeCtx
+		s.chromeCancel = chromeCancel
+		s.webURL = webUrl
 
 		err, retryable = s.navigate(chromeCtx, chromeCancel, webUrl)
 		if !retryable {
@@ -341,17 +353,28 @@ func (s *WebSource) navigate(chromeCtx context.Context, chromeCancel context.Can
 		}
 	})
 
-	// navigate
+	err := chromedp.Run(chromeCtx)
+	if err != nil {
+		if strings.HasPrefix(err.Error(), chromeFailedToStart) {
+			return errors.ChromeError(err), false
+		}
+		return errors.PageLoadError(err.Error()), false
+	}
+
+	return nil, false
+}
+
+func (s *WebSource) JoinRoom() error {
 	var timeout *time.Timer
 	var errString string
-	if err := chromedp.Run(chromeCtx,
+	if err := chromedp.Run(s.chromeCtx,
 		chromedp.ActionFunc(func(_ context.Context) error {
 			logger.Debugw("chrome initialized")
 			// set page load timeout
-			timeout = time.AfterFunc(chromeTimeout, chromeCancel)
+			timeout = time.AfterFunc(chromeTimeout, s.chromeCancel)
 			return nil
 		}),
-		chromedp.Navigate(webUrl),
+		chromedp.Navigate(s.webURL),
 		chromedp.ActionFunc(func(_ context.Context) error {
 			// cancel timer
 			timeout.Stop()
@@ -365,15 +388,15 @@ func (s *WebSource) navigate(chromeCtx context.Context, chromeCancel context.Can
 			}`, &errString),
 	); err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return errors.PageLoadError("timed out"), true
+			return errors.PageLoadError("timed out")
 		}
 		if strings.HasPrefix(err.Error(), chromeFailedToStart) {
-			return errors.ChromeError(err), false
+			return errors.ChromeError(err)
 		}
-		return errors.PageLoadError(err.Error()), false
+		return errors.PageLoadError(err.Error())
 	} else if errString != "" {
-		return errors.TemplateError(errString), false
+		return errors.TemplateError(errString)
 	}
 
-	return nil, false
+	return nil
 }

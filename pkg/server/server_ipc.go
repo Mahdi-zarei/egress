@@ -17,6 +17,7 @@ package server
 import (
 	"context"
 	"net/http"
+	"time"
 
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -43,8 +44,19 @@ func (s *Server) HandlerUpdate(_ context.Context, info *livekit.EgressInfo) (*em
 	}
 
 	if info.ErrorCode == int32(http.StatusInternalServerError) {
-		logger.Errorw("internal error, shutting down", errors.New(info.Error))
-		s.Shutdown(false, false)
+		logger.Errorw("internal error, shutting down?", errors.New(info.Error))
+		s.mu.Lock()
+		s.failTimes[time.Now()] = struct{}{}
+		for ft := range s.failTimes {
+			if time.Since(ft) > time.Minute {
+				delete(s.failTimes, ft)
+			}
+		}
+		ln := len(s.failTimes)
+		s.mu.Unlock()
+		if ln > 3 {
+			s.Shutdown(false, false)
+		}
 	}
 	logger.Debugw("handler update completed", "egressID", info.EgressId)
 

@@ -249,6 +249,8 @@ func (c *Controller) handleMessageStateChanged(msg *gst.Message) {
 		if newState == gst.StatePlaying {
 			c.playing.Once(func() {
 				logger.Infow("pipeline playing")
+				c.src.SetStartedAt()
+				c.startSessionLimitTimer(c.runCtx)
 				c.updateStartTime(c.src.GetStartedAt())
 			})
 		}

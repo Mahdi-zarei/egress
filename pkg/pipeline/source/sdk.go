@@ -148,6 +148,14 @@ func (s *SDKSource) Playing(trackID string) {
 	}
 }
 
+func (s *SDKSource) SetStartedAt() {
+	panic("not implemented")
+}
+
+func (s *SDKSource) JoinRoom() error {
+	panic("not implemented")
+}
+
 func (s *SDKSource) GetStartedAt() int64 {
 	return s.sync.GetStartedAt()
 }
