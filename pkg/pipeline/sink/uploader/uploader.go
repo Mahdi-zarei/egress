@@ -15,6 +15,7 @@
 package uploader
 
 import (
+	"fmt"
 	"os"
 	"path"
 	"time"
@@ -110,7 +111,15 @@ func getUploader(conf *config.StorageConfig) (*store, error) {
 func uploadToProvider(s *store, localFilepath string, storageFilepath string, outputType types.OutputType) (location string, size int64, err error) {
 	storageFilepath = path.Join(s.conf.Prefix, storageFilepath)
 
-	location, size, err = s.UploadFile(localFilepath, storageFilepath, string(outputType))
+	for i := range 720 {
+		location, size, err = s.UploadFile(localFilepath, storageFilepath, string(outputType))
+		if err != nil {
+			fmt.Println(errors.ErrUploadFailed(s.name, err), "RETRYING UPLOAD: ", i)
+		} else {
+			break
+		}
+		time.Sleep(10 * time.Second)
+	}
 	if err != nil {
 		return "", 0, errors.ErrUploadFailed(s.name, err)
 	}
