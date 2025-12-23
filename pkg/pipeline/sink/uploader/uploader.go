@@ -15,9 +15,14 @@
 package uploader
 
 import (
+	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/livekit/egress/pkg/config"
@@ -35,6 +40,8 @@ const presignedExpiration = time.Hour * 24 * 7 // 7 days
 type Uploader struct {
 	primary       *store
 	backup        *store
+	PrimaryGlobal *s3.Client
+	BackupGlobal  *s3.Client
 	primaryFailed bool
 	info          *livekit.EgressInfo
 	monitor       *stats.HandlerMonitor
@@ -65,7 +72,24 @@ func New(conf, backup *config.StorageConfig, monitor *stats.HandlerMonitor, info
 		} else {
 			u.backup = b
 		}
+		logger.Infow("creating backup uploader")
+		u.BackupGlobal = s3.NewFromConfig(aws.Config{
+			Region:       "us-east-1",
+			Credentials:  credentials.NewStaticCredentialsProvider(backup.S3.AccessKey, backup.S3.Secret, ""),
+			BaseEndpoint: aws.String(backup.S3.Endpoint),
+		}, func(options *s3.Options) {
+			options.UsePathStyle = true
+		})
 	}
+
+	u.PrimaryGlobal = s3.NewFromConfig(aws.Config{
+		Region:       "us-east-1",
+		Credentials:  credentials.NewStaticCredentialsProvider(conf.S3.AccessKey, conf.S3.Secret, ""),
+		BaseEndpoint: aws.String(conf.S3.Endpoint),
+	}, func(options *s3.Options) {
+		options.UsePathStyle = true
+	})
+	logger.Infow("creating primary uploader done")
 
 	return u, nil
 }
@@ -108,6 +132,54 @@ func getUploader(conf *config.StorageConfig) (*store, error) {
 	}, nil
 }
 
+func uploadToS3(s *store, localFilepath string, storageFilepath string, outputType types.OutputType, uploader *s3.Client) (location string, size int64, err error) {
+	conf := s.conf.S3
+
+	for i := range 720 {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		size, err = upload(ctx, conf.Bucket, localFilepath, storageFilepath, outputType, uploader)
+		cancel()
+		if err == nil {
+			break
+		}
+		logger.Errorw("failed to upload to S3 in attempt "+strconv.Itoa(i)+" for file "+storageFilepath, err)
+		time.Sleep(10 * time.Second)
+	}
+	if err != nil {
+		return "", 0, errors.ErrUploadFailed(s.name, err)
+	}
+
+	return fmt.Sprintf("%s/%s/%s", conf.Endpoint, conf.Bucket, storageFilepath), size, nil
+}
+
+func upload(ctx context.Context, bucketName string, localPath string, remoteName string, outputType types.OutputType, uploader *s3.Client) (size int64, err error) {
+	file, err := os.Open(localPath)
+	if err != nil {
+		return 0, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	_, err = uploader.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:        aws.String(bucketName),
+		Key:           aws.String(remoteName),
+		Body:          file,
+		ContentLength: aws.Int64(stat.Size()),
+		ContentType:   aws.String(string(outputType)),
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return stat.Size(), nil
+}
+
 func uploadToProvider(s *store, localFilepath string, storageFilepath string, outputType types.OutputType) (location string, size int64, err error) {
 	storageFilepath = path.Join(s.conf.Prefix, storageFilepath)
 
@@ -143,7 +215,7 @@ func (u *Uploader) Upload(
 	var primaryErr error
 	if !u.primaryFailed {
 		start := time.Now()
-		location, size, err := uploadToProvider(u.primary, localFilepath, storageFilepath, outputType)
+		location, size, err := uploadToS3(u.primary, localFilepath, storageFilepath, outputType, u.PrimaryGlobal)
 		elapsed := time.Since(start)
 
 		if err == nil {
@@ -164,7 +236,7 @@ func (u *Uploader) Upload(
 	}
 
 	if u.backup != nil {
-		location, size, backupErr := uploadToProvider(u.backup, localFilepath, storageFilepath, outputType)
+		location, size, backupErr := uploadToS3(u.backup, localFilepath, storageFilepath, outputType, u.BackupGlobal)
 		if backupErr == nil {
 			if u.info != nil {
 				u.info.SetBackupUsed()

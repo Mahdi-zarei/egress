@@ -9,12 +9,12 @@ toolchain go1.24.3
 require (
 	cloud.google.com/go/storage v1.55.0
 	github.com/Azure/azure-storage-blob-go v0.15.0
-	github.com/aws/aws-sdk-go-v2 v1.36.5
+	github.com/aws/aws-sdk-go-v2 v1.41.0
 	github.com/aws/aws-sdk-go-v2/config v1.29.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.70
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.81
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.81.0
-	github.com/aws/smithy-go v1.22.4
+	github.com/aws/smithy-go v1.24.0
 	github.com/chromedp/cdproto v0.0.0-20250509201441-70372ae9ef75
 	github.com/chromedp/chromedp v0.13.6
 	github.com/frostbyte73/core v0.1.1
