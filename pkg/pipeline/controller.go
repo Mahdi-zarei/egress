@@ -197,7 +197,7 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 
 	if c.SessionLimits.StartDelay > 0 {
 		logger.Debugw("Sleeping for " + c.SessionLimits.StartDelay.String())
-		time.Sleep(c.SessionLimits.StartDelay)
+		time.Sleep(c.SessionLimits.StartDelay - 200*time.Millisecond) // a bit less to account for startup delays
 	}
 
 	defer c.Close()
@@ -219,9 +219,6 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 			)
 		}
 	}()
-
-	// session limit timer
-	c.startSessionLimitTimer(ctx)
 
 	// close when room ends
 	go func() {
@@ -253,6 +250,8 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 		}
 	}
 
+	// session limit timer
+	c.startSessionLimitTimer(ctx)
 	c.startOutputSizeMonitor()
 
 	err = c.p.Run()
@@ -562,7 +561,7 @@ func (c *Controller) startSessionLimitTimer(ctx context.Context) {
 	}
 
 	if timeout > 0 {
-		c.limitTimer = time.AfterFunc(timeout-time.Second, func() {
+		c.limitTimer = time.AfterFunc(timeout+time.Second, func() {
 			switch c.Info.Status {
 			case livekit.EgressStatus_EGRESS_STARTING:
 				c.Info.SetAborted(livekit.MsgLimitReachedWithoutStart)
